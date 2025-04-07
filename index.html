@@ -2,110 +2,110 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Générateur d'E-mail Temporaire</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boîte de Réception</title>
   <style>
     body {
-      font-family: sans-serif;
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
       padding: 20px;
-      background-color: black; /* Fond noir */
-      color: white; /* Texte en blanc */
     }
     .email {
-      font-size: 1.2em;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .message {
-      cursor: pointer;
-      margin: 10px 0;
-      background-color: #333; /* Fond gris foncé pour les messages */
+      margin-bottom: 15px;
       padding: 10px;
+      background-color: #333;
       border-radius: 5px;
+      cursor: pointer;
     }
-    .message:hover {
-      background-color: #444; /* Changer la couleur au survol */
+    .email:hover {
+      background-color: #444;
     }
-    .content {
+    .email-content {
       display: none;
       margin-top: 10px;
+      padding: 10px;
+      background-color: #222;
+      border-radius: 5px;
+    }
+    .attachment {
+      margin-top: 10px;
+    }
+    .attachment img {
+      max-width: 100px;
+      max-height: 100px;
     }
   </style>
 </head>
 <body>
-  <h1>🎯 Votre E-mail Temporaire</h1>
-  <button onclick="generateEmail()">Générer une adresse</button>
-  <div class="email" id="email"></div>
-  <div id="messages"></div>
+  <h1>Boîte de Réception</h1>
+  <div id="email-list"></div>
 
   <script>
-    let token = '';
-
-    async function generateEmail() {
-      const domainResponse = await fetch('https://api.mail.tm/domains');
-      const domains = await domainResponse.json();
-      
-      const random = Math.random().toString(36).substring(2, 12);  // Plus long pour être plus unique
-      const email = `${random}@${domains["hydra:member"][0].domain}`;
-      const password = "azerty123"; // Mot de passe simple
-
-      // Créer le compte
-      await fetch('https://api.mail.tm/accounts', {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: email, password: password })
-      });
-
-      // Se connecter
-      const tokenResponse = await fetch('https://api.mail.tm/token', {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: email, password: password })
-      });
-
-      const tokenData = await tokenResponse.json();
-      token = tokenData.token;
-
-      document.getElementById("email").innerText = email;
-
-      // Récupérer les e-mails reçus toutes les 5 secondes
-      setInterval(async () => {
-        const messagesResponse = await fetch('https://api.mail.tm/messages', {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        const messages = await messagesResponse.json();
-        let output = "<h2>📬 Messages reçus :</h2>";
-
-        messages["hydra:member"].forEach(msg => {
-          output += `<div class="message" onclick="toggleMessageContent('${msg.id}')">
-                      <strong>De :</strong> ${msg.from.address}<br>
-                      <strong>Sujet :</strong> ${msg.subject}
-                     </div><hr>`;
-        });
-
-        document.getElementById("messages").innerHTML = output;
-      }, 5000);
-    }
-
-    async function toggleMessageContent(messageId) {
-      const contentDiv = document.getElementById(`content-${messageId}`);
-      if (contentDiv.style.display === 'block') {
-        contentDiv.style.display = 'none';
-        return;
+    // Exemple d'email
+    const emails = [
+      {
+        id: '1',
+        subject: 'Bienvenue dans notre service !',
+        sender: 'service@example.com',
+        text: 'Ceci est un message de bienvenue.',
+        attachments: [
+          { filename: 'image1.jpg', url: 'https://example.com/image1.jpg' }
+        ]
+      },
+      {
+        id: '2',
+        subject: 'Rapport de votre activité',
+        sender: 'rapport@example.com',
+        text: 'Voici le rapport de votre activité.',
+        attachments: [
+          { filename: 'rapport.pdf', url: 'https://example.com/rapport.pdf' }
+        ]
       }
-      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const messageDetails = await response.json();
+    ];
 
-      // Afficher le contenu du message
-      const content = messageDetails.text || 'Aucun contenu texte dans cet e-mail.';
-      contentDiv.style.display = 'block';
-      contentDiv.innerHTML = `
-        <strong>Contenu :</strong><br>
-        <pre>${content}</pre>
-      `;
+    // Afficher la liste des e-mails
+    function loadEmails() {
+      const emailListDiv = document.getElementById('email-list');
+      emails.forEach(email => {
+        const emailDiv = document.createElement('div');
+        emailDiv.classList.add('email');
+        emailDiv.innerHTML = `
+          <strong>${email.subject}</strong><br>
+          <em>${email.sender}</em>
+        `;
+        emailDiv.addEventListener('click', () => toggleMessageContent(email.id));
+        emailListDiv.appendChild(emailDiv);
+      });
     }
+
+    // Afficher ou cacher le contenu d'un e-mail
+    function toggleMessageContent(emailId) {
+      const email = emails.find(e => e.id === emailId);
+      const contentDiv = document.getElementById(`content-${emailId}`);
+
+      // Créer le contenu du message
+      if (!contentDiv) {
+        const newContentDiv = document.createElement('div');
+        newContentDiv.classList.add('email-content');
+        newContentDiv.id = `content-${emailId}`;
+        newContentDiv.innerHTML = `
+          <strong>Contenu :</strong><br>
+          <pre>${email.text}</pre>
+          ${email.attachments.map(attachment => `
+            <div class="attachment">
+              <a href="${attachment.url}" target="_blank">${attachment.filename}</a>
+            </div>
+          `).join('')}
+        `;
+        document.getElementById('email-list').appendChild(newContentDiv);
+      } else {
+        contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
+      }
+    }
+
+    // Initialiser la liste des e-mails
+    loadEmails();
   </script>
 </body>
 </html>
