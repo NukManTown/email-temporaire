@@ -7,20 +7,24 @@
     body {
       font-family: sans-serif;
       padding: 20px;
-      background-color: #121212;
-      color: white;
+      background-color: #111; /* Fond noir */
+      color: #fff; /* Texte en blanc */
     }
     .email {
       font-size: 1.2em;
       font-weight: bold;
       margin-top: 10px;
       cursor: pointer;
+      color: #4CAF50; /* Couleur verte pour l'adresse e-mail */
+    }
+    .email:hover {
+      text-decoration: underline;
     }
     .message-content {
       display: none;
-      margin-top: 10px;
-      padding: 10px;
       background-color: #333;
+      padding: 10px;
+      margin-top: 10px;
       border-radius: 5px;
     }
   </style>
@@ -32,11 +36,12 @@
   <div id="messages"></div>
 
   <script>
-    let token = ""; // Initialise la variable token pour plus tard
+    let token = '';
 
     async function generateEmail() {
       const domainResponse = await fetch('https://api.mail.tm/domains');
       const domains = await domainResponse.json();
+
       const random = Math.random().toString(36).substring(2, 10);
       const email = `${random}@${domains["hydra:member"][0].domain}`;
       const password = "azerty123"; // mot de passe simple
@@ -70,14 +75,7 @@
         let output = "<h2>📬 Messages reçus :</h2>";
 
         messages["hydra:member"].forEach(msg => {
-          output += `
-            <div class="email" onclick="toggleMessageContent('${msg.id}')">
-              <strong>De :</strong> ${msg.from.address}<br>
-              <strong>Sujet :</strong> ${msg.subject}
-            </div>
-            <div id="content-${msg.id}" class="message-content"></div>
-            <hr>
-          `;
+          output += `<p class="email" onclick="toggleMessageContent('${msg.id}')">From: ${msg.from.address}<br>Subject: ${msg.subject}</p><div id="content-${msg.id}" class="message-content"></div><hr>`;
         });
 
         document.getElementById("messages").innerHTML = output;
@@ -86,12 +84,20 @@
 
     async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
+
+      // Si le message est déjà ouvert, on le ferme
+      if (contentDiv.style.display === 'block') {
+        contentDiv.style.display = 'none';
+        return;
+      }
+
+      // Si le message n'est pas encore ouvert, on l'ouvre
       const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const messageDetails = await response.json();
 
-      contentDiv.style.display = 'block';  // Afficher le contenu
+      contentDiv.style.display = 'block';
       contentDiv.innerHTML = `
         <strong>Contenu :</strong><br>
         <pre>${messageDetails.text || 'Aucun contenu texte dans cet e-mail.'}</pre>
