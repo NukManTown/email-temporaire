@@ -13,21 +13,9 @@
       font-weight: bold;
       margin-top: 10px;
     }
-    .message {
-      cursor: pointer;
-      padding: 10px;
-      background-color: #f0f0f0;
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-    }
-    .message:hover {
-      background-color: #e0e0e0;
-    }
-    .content {
-      display: none;
-      padding: 10px;
-      background-color: #fafafa;
+    .message-content {
       margin-top: 10px;
+      display: none;
     }
   </style>
 </head>
@@ -38,7 +26,7 @@
   <div id="messages"></div>
 
   <script>
-    let token = ''; // Token pour l'authentification
+    let token = null;
 
     async function generateEmail() {
       const domainResponse = await fetch('https://api.mail.tm/domains');
@@ -67,47 +55,63 @@
 
       document.getElementById("email").innerText = email;
 
-      // Récupérer les e-mails reçus toutes les 5 secondes
-      setInterval(async () => {
-        const messagesResponse = await fetch('https://api.mail.tm/messages', {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        const messages = await messagesResponse.json();
-        let output = "<h2>📬 Messages reçus :</h2>";
-
-        messages["hydra:member"].forEach(msg => {
-          output += `
-            <div class="message" onclick="toggleMessageContent('${msg['@id']}')">
-              <strong>De :</strong> ${msg.from.address}<br>
-              <strong>Sujet :</strong> ${msg.subject}
-              <div id="content-${msg['@id']}" class="content"></div>
-            </div>
-          `;
-        });
-
-        document.getElementById("messages").innerHTML = output;
-      }, 5000);
+      // Récupérer les e-mails reçus
+      await loadMessages();
     }
 
-async function toggleMessageContent(messageId) {
-  const contentDiv = document.getElementById(`content-${messageId}`);
-  const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-  const messageDetails = await response.json();
+    async function loadMessages() {
+      const messagesResponse = await fetch('https://api.mail.tm/messages', {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
 
-  // Affichage du contenu texte brut ou HTML
-  let content = messageDetails.text || messageDetails.html || 'Aucun contenu texte disponible.';
+      const messages = await messagesResponse.json();
+      let output = "<h2>📬 Messages reçus :</h2>";
 
-  // Affichage du contenu
-  contentDiv.style.display = 'block';
-  contentDiv.innerHTML = `
-    <strong>Contenu :</strong><br>
-    <pre>${content}</pre>
-  `;
-}
+      messages["hydra:member"].forEach(msg => {
+        output += `
+          <div>
+            <strong>De :</strong> ${msg.from.address}<br>
+            <strong>Sujet :</strong> ${msg.subject}<br>
+            <button onclick="toggleMessageContent('${msg.id}')">Voir le contenu</button>
+            <div id="content-${msg.id}" class="message-content"></div>
+            <hr>
+          </div>
+        `;
+      });
 
+      document.getElementById("messages").innerHTML = output;
+    }
+
+    async function toggleMessageContent(messageId) {
+      const contentDiv = document.getElementById(`content-${messageId}`);
+      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const messageDetails = await response.json();
+
+      // Débogage pour afficher les détails du message dans la console
+      console.log('Message details:', messageDetails);
+
+      if (messageDetails && messageDetails.text) {
+        // Affichage du contenu texte brut
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = `
+          <strong>Contenu :</strong><br>
+          <pre>${messageDetails.text}</pre>
+        `;
+      } else if (messageDetails && messageDetails.html) {
+        // Affichage du contenu HTML (si disponible)
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = `
+          <strong>Contenu HTML :</strong><br>
+          <div>${messageDetails.html}</div>
+        `;
+      } else {
+        // Si pas de contenu, afficher un message par défaut
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = 'Aucun contenu disponible dans cet e-mail.';
+      }
+    }
   </script>
 </body>
 </html>
