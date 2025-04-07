@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Générateur d'E-mail Temporaire</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .email {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 Votre E-mail Temporaire</h1>
+  <button onclick="generateEmail()">Générer une adresse</button>
+  <div class="email" id="email"></div>
+  <div id="messages"></div>
+
+  <script>
+    async function generateEmail() {
+      const domainResponse = await fetch('https://api.mail.tm/domains');
+      const domains = await domainResponse.json();
+
+      const random = Math.random().toString(36).substring(2, 10);
+      const email = `${random}@${domains["hydra:member"][0].domain}`;
+      const password = "azerty123"; // mot de passe simple
+
+      // Créer le compte
+      await fetch('https://api.mail.tm/accounts', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: email, password: password })
+      });
+
+      // Se connecter
+      const tokenResponse = await fetch('https://api.mail.tm/token', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: email, password: password })
+      });
+
+      const tokenData = await tokenResponse.json();
+      const token = tokenData.token;
+
+      document.getElementById("email").innerText = email;
+
+      // Récupérer les e-mails reçus toutes les 5 secondes
+      setInterval(async () => {
+        const messagesResponse = await fetch('https://api.mail.tm/messages', {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        const messages = await messagesResponse.json();
+        let output = "<h2>📬 Messages reçus :</h2>";
+
+        messages["hydra:member"].forEach(msg => {
+          output += `<p><strong>De :</strong> ${msg.from.address}<br><strong>Sujet :</strong> ${msg.subject}</p><hr>`;
+        });
+
+        document.getElementById("messages").innerHTML = output;
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
