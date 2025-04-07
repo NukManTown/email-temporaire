@@ -90,20 +90,24 @@
       }, 5000);
     }
 
-    async function toggleMessageContent(messageId) {
-      const contentDiv = document.getElementById(`content-${messageId}`);
-      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const messageDetails = await response.json();
+async function toggleMessageContent(messageId) {
+  const contentDiv = document.getElementById(`content-${messageId}`);
+  const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  const messageDetails = await response.json();
 
-      // Afficher le contenu du message
-      contentDiv.style.display = 'block';
-      contentDiv.innerHTML = `
-        <strong>Contenu :</strong><br>
-        <pre>${messageDetails.text || 'Aucun contenu texte dans cet e-mail.'}</pre>
-      `;
-    }
+  // Affichage du contenu texte brut ou HTML
+  let content = messageDetails.text || messageDetails.html || 'Aucun contenu texte disponible.';
+
+  // Affichage du contenu
+  contentDiv.style.display = 'block';
+  contentDiv.innerHTML = `
+    <strong>Contenu :</strong><br>
+    <pre>${content}</pre>
+  `;
+}
+
   </script>
 </body>
 </html>
