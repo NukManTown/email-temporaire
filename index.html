@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -13,6 +14,22 @@
       font-weight: bold;
       margin-top: 10px;
     }
+    .message {
+      cursor: pointer;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .message:hover {
+      background-color: #e0e0e0;
+    }
+    .content {
+      display: none;
+      padding: 10px;
+      background-color: #fafafa;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -22,6 +39,8 @@
   <div id="messages"></div>
 
   <script>
+    let token = ''; // Token pour l'authentification
+
     async function generateEmail() {
       const domainResponse = await fetch('https://api.mail.tm/domains');
       const domains = await domainResponse.json();
@@ -45,7 +64,7 @@
       });
 
       const tokenData = await tokenResponse.json();
-      const token = tokenData.token;
+      token = tokenData.token;
 
       document.getElementById("email").innerText = email;
 
@@ -59,11 +78,28 @@
         let output = "<h2>📬 Messages reçus :</h2>";
 
         messages["hydra:member"].forEach(msg => {
-          output += `<p><strong>De :</strong> ${msg.from.address}<br><strong>Sujet :</strong> ${msg.subject}</p><hr>`;
+          output += `
+            <div class="message" onclick="toggleMessageContent('${msg['@id']}')">
+              <strong>De :</strong> ${msg.from.address}<br>
+              <strong>Sujet :</strong> ${msg.subject}
+              <div id="content-${msg['@id']}" class="content">
+                <p><strong>Contenu :</strong> ${msg.text || 'Aucun contenu texte dans cet e-mail.'}</p>
+              </div>
+            </div>
+          `;
         });
 
         document.getElementById("messages").innerHTML = output;
       }, 5000);
+    }
+
+    function toggleMessageContent(messageId) {
+      const contentDiv = document.getElementById(`content-${messageId}`);
+      if (contentDiv.style.display === 'none' || contentDiv.style.display === '') {
+        contentDiv.style.display = 'block';
+      } else {
+        contentDiv.style.display = 'none';
+      }
     }
   </script>
 </body>
