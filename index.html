@@ -38,6 +38,9 @@
     button:hover {
       background-color: #0056b3;
     }
+    #messages {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -49,7 +52,8 @@
   </div>
 
   <script>
-    let token = "";  // Je garde une variable globale pour le token.
+    let token = "";  // Variable globale pour le token
+    let messageCache = {}; // Cache pour stocker les messages récupérés
 
     async function generateEmail() {
       const domainResponse = await fetch('https://api.mail.tm/domains');
@@ -77,25 +81,42 @@
 
       document.getElementById("email").innerText = email;
 
-      // Récupérer les e-mails reçus toutes les 5 secondes
+      // Démarrer l'actualisation des e-mails en arrière-plan
+      startCheckingEmails();
+    }
+
+    // Fonction pour récupérer les e-mails en arrière-plan sans perturber l'interface
+    async function startCheckingEmails() {
       setInterval(async () => {
         const messagesResponse = await fetch('https://api.mail.tm/messages', {
           headers: { "Authorization": `Bearer ${token}` }
         });
 
         const messages = await messagesResponse.json();
-        let output = "<h2>📬 Messages reçus :</h2>";
 
+        // Filtrer les nouveaux messages
         messages["hydra:member"].forEach(msg => {
-          output += `<p><strong>De :</strong> ${msg.from.address}<br><strong>Sujet :</strong> ${msg.subject}</p>
-          <button onclick="toggleMessageContent('${msg.id}')">Ouvrir le message</button>
-          <div id="content-${msg.id}" class="message-content" style="display:none;"></div><hr>`;
+          if (!messageCache[msg.id]) {
+            messageCache[msg.id] = msg;
+            displayNewMessage(msg);  // Afficher le message uniquement si c'est un nouveau
+          }
         });
-
-        document.getElementById("messages").innerHTML = output;
-      }, 5000);
+      }, 5000);  // Vérifie les nouveaux messages toutes les 5 secondes
     }
 
+    // Afficher un message seulement si il est nouveau
+    function displayNewMessage(msg) {
+      const messagesDiv = document.getElementById("messages");
+      const messageDiv = document.createElement("div");
+      messageDiv.innerHTML = `
+        <p><strong>De :</strong> ${msg.from.address}<br><strong>Sujet :</strong> ${msg.subject}</p>
+        <button onclick="toggleMessageContent('${msg.id}')">Ouvrir le message</button>
+        <div id="content-${msg.id}" class="message-content" style="display:none;"></div><hr>
+      `;
+      messagesDiv.appendChild(messageDiv);
+    }
+
+    // Afficher le contenu du message
     async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
       const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
