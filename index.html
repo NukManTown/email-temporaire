@@ -7,6 +7,8 @@
     body {
       font-family: sans-serif;
       padding: 20px;
+      background-color: black; /* Fond noir */
+      color: white; /* Texte en blanc */
     }
     .email {
       font-size: 1.2em;
@@ -14,9 +16,18 @@
       margin-top: 10px;
     }
     .message {
-      margin-top: 20px;
+      cursor: pointer;
+      margin: 10px 0;
+      background-color: #333; /* Fond gris foncé pour les messages */
       padding: 10px;
-      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .message:hover {
+      background-color: #444; /* Changer la couleur au survol */
+    }
+    .content {
+      display: none;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -27,67 +38,72 @@
   <div id="messages"></div>
 
   <script>
-    let token = "";
-    let email = "";
+    let token = '';
 
-async function generateEmail() {
-  const domainResponse = await fetch('https://api.mail.tm/domains');
-  const domains = await domainResponse.json();
-  
-  const random = Math.random().toString(36).substring(2, 12);  // Plus long pour être plus unique
-  const email = `${random}@${domains["hydra:member"][0].domain}`;
-  const password = "azerty123"; // Mot de passe simple
+    async function generateEmail() {
+      const domainResponse = await fetch('https://api.mail.tm/domains');
+      const domains = await domainResponse.json();
+      
+      const random = Math.random().toString(36).substring(2, 12);  // Plus long pour être plus unique
+      const email = `${random}@${domains["hydra:member"][0].domain}`;
+      const password = "azerty123"; // Mot de passe simple
 
-  // Créer le compte
-  await fetch('https://api.mail.tm/accounts', {
-    method: 'POST',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address: email, password: password })
-  });
+      // Créer le compte
+      await fetch('https://api.mail.tm/accounts', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: email, password: password })
+      });
 
-  // Se connecter
-  const tokenResponse = await fetch('https://api.mail.tm/token', {
-    method: 'POST',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address: email, password: password })
-  });
+      // Se connecter
+      const tokenResponse = await fetch('https://api.mail.tm/token', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: email, password: password })
+      });
 
-  const tokenData = await tokenResponse.json();
-  const token = tokenData.token;
+      const tokenData = await tokenResponse.json();
+      token = tokenData.token;
 
-  document.getElementById("email").innerText = email;
-  
-  // Récupérer les e-mails reçus toutes les 5 secondes
-  setInterval(async () => {
-    const messagesResponse = await fetch('https://api.mail.tm/messages', {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
+      document.getElementById("email").innerText = email;
 
-    const messages = await messagesResponse.json();
-    let output = "<h2>📬 Messages reçus :</h2>";
+      // Récupérer les e-mails reçus toutes les 5 secondes
+      setInterval(async () => {
+        const messagesResponse = await fetch('https://api.mail.tm/messages', {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
 
-    messages["hydra:member"].forEach(msg => {
-      output += `<p><strong>De :</strong> ${msg.from.address}<br><strong>Sujet :</strong> ${msg.subject}</p><hr>`;
-    });
+        const messages = await messagesResponse.json();
+        let output = "<h2>📬 Messages reçus :</h2>";
 
-    document.getElementById("messages").innerHTML = output;
-  }, 5000);
-}
+        messages["hydra:member"].forEach(msg => {
+          output += `<div class="message" onclick="toggleMessageContent('${msg.id}')">
+                      <strong>De :</strong> ${msg.from.address}<br>
+                      <strong>Sujet :</strong> ${msg.subject}
+                     </div><hr>`;
+        });
 
-      document.getElementById("messages").innerHTML = output;
+        document.getElementById("messages").innerHTML = output;
+      }, 5000);
     }
 
-    async function viewMessage(messageId) {
+    async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
+      if (contentDiv.style.display === 'block') {
+        contentDiv.style.display = 'none';
+        return;
+      }
       const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const messageDetails = await response.json();
 
+      // Afficher le contenu du message
+      const content = messageDetails.text || 'Aucun contenu texte dans cet e-mail.';
       contentDiv.style.display = 'block';
       contentDiv.innerHTML = `
         <strong>Contenu :</strong><br>
-        <pre>${messageDetails.text || 'Aucun contenu texte dans cet e-mail.'}</pre>
+        <pre>${content}</pre>
       `;
     }
   </script>
