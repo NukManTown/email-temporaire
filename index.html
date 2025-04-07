@@ -17,6 +17,10 @@
       margin-top: 10px;
       display: none;
     }
+    .message-attachment {
+      margin-top: 5px;
+      color: blue;
+    }
   </style>
 </head>
 <body>
@@ -28,6 +32,7 @@
   <script>
     let token = null;
 
+    // Fonction pour générer un e-mail temporaire
     async function generateEmail() {
       const domainResponse = await fetch('https://api.mail.tm/domains');
       const domains = await domainResponse.json();
@@ -59,6 +64,7 @@
       await loadMessages();
     }
 
+    // Fonction pour charger les messages de la boîte de réception
     async function loadMessages() {
       const messagesResponse = await fetch('https://api.mail.tm/messages', {
         headers: { "Authorization": `Bearer ${token}` }
@@ -82,6 +88,7 @@
       document.getElementById("messages").innerHTML = output;
     }
 
+    // Fonction pour afficher le contenu du message
     async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
       contentDiv.innerHTML = "Chargement...";  // Affiche "Chargement..." en attendant la réponse de l'API
@@ -90,10 +97,10 @@
         const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        
+
         const messageDetails = await response.json();
         console.log("Message récupéré:", messageDetails);  // Débogage : vérifier ce qui est renvoyé par l'API
-        
+
         if (messageDetails.text) {
           contentDiv.style.display = 'block';
           contentDiv.innerHTML = `
@@ -108,8 +115,27 @@
           `;
         } else {
           contentDiv.style.display = 'block';
-          contentDiv.innerHTML = 'Aucun contenu disponible dans cet e-mail.';
+          contentDiv.innerHTML = 'Aucun contenu texte ou HTML disponible dans cet e-mail.';
         }
+
+        // Afficher les pièces jointes (s'il y en a)
+        if (messageDetails.attachments && messageDetails.attachments.length > 0) {
+          const attachmentsDiv = document.createElement('div');
+          attachmentsDiv.innerHTML = '<strong>Pièces jointes :</strong><br>';
+          
+          messageDetails.attachments.forEach(att => {
+            const attachmentLink = document.createElement('a');
+            attachmentLink.href = att.url;
+            attachmentLink.target = "_blank";
+            attachmentLink.className = 'message-attachment';
+            attachmentLink.innerText = `${att.name} (${att.size} octets)`;
+            attachmentsDiv.appendChild(attachmentLink);
+            attachmentsDiv.appendChild(document.createElement('br'));
+          });
+
+          contentDiv.appendChild(attachmentsDiv);
+        }
+
       } catch (error) {
         contentDiv.style.display = 'block';
         contentDiv.innerHTML = 'Erreur lors de la récupération du message.';
