@@ -84,32 +84,36 @@
 
     async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
-      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const messageDetails = await response.json();
+      contentDiv.innerHTML = "Chargement...";  // Affiche "Chargement..." en attendant la réponse de l'API
 
-      // Débogage pour afficher les détails du message dans la console
-      console.log('Message details:', messageDetails);
-
-      if (messageDetails && messageDetails.text) {
-        // Affichage du contenu texte brut
+      try {
+        const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        
+        const messageDetails = await response.json();
+        console.log("Message récupéré:", messageDetails);  // Débogage : vérifier ce qui est renvoyé par l'API
+        
+        if (messageDetails.text) {
+          contentDiv.style.display = 'block';
+          contentDiv.innerHTML = `
+            <strong>Contenu texte :</strong><br>
+            <pre>${messageDetails.text}</pre>
+          `;
+        } else if (messageDetails.html) {
+          contentDiv.style.display = 'block';
+          contentDiv.innerHTML = `
+            <strong>Contenu HTML :</strong><br>
+            <div>${messageDetails.html}</div>
+          `;
+        } else {
+          contentDiv.style.display = 'block';
+          contentDiv.innerHTML = 'Aucun contenu disponible dans cet e-mail.';
+        }
+      } catch (error) {
         contentDiv.style.display = 'block';
-        contentDiv.innerHTML = `
-          <strong>Contenu :</strong><br>
-          <pre>${messageDetails.text}</pre>
-        `;
-      } else if (messageDetails && messageDetails.html) {
-        // Affichage du contenu HTML (si disponible)
-        contentDiv.style.display = 'block';
-        contentDiv.innerHTML = `
-          <strong>Contenu HTML :</strong><br>
-          <div>${messageDetails.html}</div>
-        `;
-      } else {
-        // Si pas de contenu, afficher un message par défaut
-        contentDiv.style.display = 'block';
-        contentDiv.innerHTML = 'Aucun contenu disponible dans cet e-mail.';
+        contentDiv.innerHTML = 'Erreur lors de la récupération du message.';
+        console.error('Erreur API:', error);
       }
     }
   </script>
