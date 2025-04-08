@@ -94,6 +94,7 @@
     let tempEmail = '';
     let tempToken = '';
     let checkInterval = null;
+    let displayedIds = new Set();
 
     async function generateEmail() {
       try {
@@ -142,7 +143,10 @@
         });
 
         const data = await res.json();
-        displayEmails(data['hydra:member']);
+        const newEmails = data['hydra:member'].filter(email => !displayedIds.has(email.id));
+        if (newEmails.length > 0) {
+          await displayEmails(newEmails);
+        }
       } catch (err) {
         console.error("Erreur de récupération :", err);
       }
@@ -150,14 +154,11 @@
 
     async function displayEmails(emails) {
       const inbox = document.getElementById('inbox');
-      inbox.innerHTML = '';
-
-      if (!emails.length) {
-        inbox.innerHTML = 'Aucun email pour l\'instant.';
-        return;
-      }
+      if (inbox.textContent.includes('Aucun email')) inbox.innerHTML = '';
 
       for (const email of emails) {
+        displayedIds.add(email.id);
+
         const res = await fetch(`https://api.mail.tm/messages/${email.id}`, {
           headers: { 'Authorization': `Bearer ${tempToken}` }
         });
@@ -178,19 +179,20 @@
           content += `<div class="attachments"><strong>Pièces jointes :</strong><br>`;
           for (const file of fullEmail.attachments) {
             const link = `https://api.mail.tm/messages/${fullEmail.id}/attachments/${file.id}`;
+            const type = file.type || '';
             content += `
               <a class="attachment" href="${link}" target="_blank" download="${file.filename}">
                 📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
               </a>
-              ${file.type.startsWith('image/') ? `<br><img src="${link}" style="max-width:100%; margin-top:10px;">` : ''}
-              ${file.type === 'application/pdf' ? `<iframe src="${link}"></iframe>` : ''}
+              ${type.startsWith('image/') ? `<br><img src="${link}" style="max-width:100%; margin-top:10px;">` : ''}
+              ${type === 'application/pdf' ? `<iframe src="${link}"></iframe>` : ''}
             `;
           }
           content += '</div>';
         }
 
         div.innerHTML = content;
-        inbox.appendChild(div);
+        inbox.prepend(div);
       }
     }
 
