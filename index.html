@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boîte de réception</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Boîte Mail Temporaire</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -11,13 +11,21 @@
       margin: 0;
       padding: 0;
     }
-    .inbox-container {
+    .container {
       max-width: 800px;
       margin: 20px auto;
       padding: 20px;
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    #email-address {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
     }
     .email-item {
       padding: 15px;
@@ -35,85 +43,118 @@
       padding: 10px;
       background-color: #eef2f3;
       border-radius: 5px;
+      margin-top: 10px;
     }
-    .email-header {
-      font-weight: bold;
-      font-size: 16px;
-      margin-bottom: 5px;
+    pre {
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
-  <div class="inbox-container">
-    <h1>Boîte de Réception</h1>
-    <div id="emails"></div>
+  <div class="container">
+    <h1>📬 Boîte Mail Temporaire</h1>
+    <div id="email-address">Génération de l'adresse...</div>
+    <div id="emails">Chargement...</div>
   </div>
 
   <script>
-    // Remplace par ton token d'authentification
-    const token = 'TON_TOKEN_ICI';
-    
-    // Fonction pour récupérer les emails
-    async function fetchEmails() {
-      const response = await fetch('https://api.mail.tm/messages', {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await response.json();
-      displayEmails(data);
+    let token = '';
+    let userEmail = '';
+    let openedMessages = new Set(); // Pour garder les mails ouverts
+    let messagesCache = {}; // Pour éviter de dupliquer les mails déjà affichés
+
+    // Fonction pour générer un email random
+    function generateRandomEmail() {
+      const random = Math.random().toString(36).substring(2, 10);
+      return `${random}@qa.team`; // domaine temporaire autorisé par mail.tm
     }
 
-    // Fonction pour afficher les emails
+    // Créer un compte temporaire et récupérer le token
+    async function createAccountAndLogin() {
+      userEmail = generateRandomEmail();
+      const password = 'superSecure123!';
+
+      // Création du compte
+      await fetch('https://api.mail.tm/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: userEmail, password })
+      });
+
+      // Connexion pour obtenir le token
+      const response = await fetch('https://api.mail.tm/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: userEmail, password })
+      });
+
+      const data = await response.json();
+      token = data.token;
+
+      document.getElementById('email-address').innerText = `Votre adresse : ${userEmail}`;
+      fetchEmails(); // Charger les mails une première fois
+      setInterval(fetchEmails, 10000); // Puis toutes les 10 sec
+    }
+
+    // Récupérer les emails
+    async function fetchEmails() {
+      const response = await fetch('https://api.mail.tm/messages', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      displayEmails(data['hydra:member']);
+    }
+
+    // Afficher les emails sans supprimer les ouverts
     function displayEmails(emails) {
-      const emailContainer = document.getElementById('emails');
-      emailContainer.innerHTML = ''; // Reset les emails affichés
+      const container = document.getElementById('emails');
+
       emails.forEach(email => {
-        const emailDiv = document.createElement('div');
-        emailDiv.classList.add('email-item');
-        emailDiv.innerHTML = `
-          <div class="email-header">${email.subject}</div>
-          <div class="email-body">${email.sender}</div>
+        if (messagesCache[email.id]) return; // déjà affiché
+
+        const mailDiv = document.createElement('div');
+        mailDiv.classList.add('email-item');
+        mailDiv.innerHTML = `
+          <div><strong>${email.subject}</strong> - ${email.from.address}</div>
           <div id="content-${email.id}" class="email-content">
-            <strong>Contenu :</strong><br>
-            <pre>${email.text || 'Aucun contenu texte dans cet e-mail.'}</pre>
+            <pre>Chargement...</pre>
             <div id="attachments-${email.id}"></div>
           </div>
         `;
-        emailDiv.addEventListener('click', () => toggleMessageContent(email.id));
-        emailContainer.appendChild(emailDiv);
+
+        mailDiv.addEventListener('click', () => toggleMessageContent(email.id));
+        container.prepend(mailDiv); // le plus récent en haut
+        messagesCache[email.id] = true;
       });
     }
 
-    // Fonction pour ouvrir/fermer un mail et afficher le contenu
+    // Afficher ou masquer le contenu d'un mail
     async function toggleMessageContent(messageId) {
       const contentDiv = document.getElementById(`content-${messageId}`);
-      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const messageDetails = await response.json();
+      const isVisible = contentDiv.style.display === 'block';
 
-      // Afficher le contenu du message
-      contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
-      contentDiv.innerHTML = `
-        <strong>Contenu :</strong><br>
-        <pre>${messageDetails.text || 'Aucun contenu texte dans cet e-mail.'}</pre>
-      `;
-
-      // Afficher les pièces jointes
-      if (messageDetails.attachments && messageDetails.attachments.length > 0) {
-        const attachmentsDiv = document.getElementById(`attachments-${messageId}`);
-        messageDetails.attachments.forEach(att => {
-          const attLink = document.createElement('a');
-          attLink.href = att.url;
-          attLink.target = '_blank';
-          attLink.innerHTML = `Télécharger pièce jointe: ${att.filename}`;
-          attachmentsDiv.appendChild(attLink);
-          attachmentsDiv.appendChild(document.createElement('br'));
-        });
+      if (isVisible) {
+        contentDiv.style.display = 'none';
+        openedMessages.delete(messageId);
+        return;
       }
+
+      contentDiv.style.display = 'block';
+      openedMessages.add(messageId);
+
+      // Si contenu déjà chargé, pas besoin de rechanger
+      if (contentDiv.dataset.loaded === '1') return;
+
+      const response = await fetch(`https://api.mail.tm/messages/${messageId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const message = await response.json();
+
+      contentDiv.querySelector('pre').textContent = message.text || 'Aucun contenu texte.';
+      contentDiv.dataset.loaded = '1'; // Marquer comme chargé
     }
 
-    // Initialiser
-    fetchEmails();
+    createAccountAndLogin();
   </script>
 </body>
 </html>
