@@ -76,6 +76,10 @@
       margin-top: 15px;
       border: 1px solid #ccc;
     }
+    img {
+      max-width: 100%;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -94,7 +98,6 @@
     let tempEmail = '';
     let tempToken = '';
     let checkInterval = null;
-    let displayedIds = new Set();
 
     async function generateEmail() {
       try {
@@ -143,10 +146,7 @@
         });
 
         const data = await res.json();
-        const newEmails = data['hydra:member'].filter(email => !displayedIds.has(email.id));
-        if (newEmails.length > 0) {
-          await displayEmails(newEmails);
-        }
+        displayEmails(data['hydra:member']);
       } catch (err) {
         console.error("Erreur de récupération :", err);
       }
@@ -154,11 +154,14 @@
 
     async function displayEmails(emails) {
       const inbox = document.getElementById('inbox');
-      if (inbox.textContent.includes('Aucun email')) inbox.innerHTML = '';
+      inbox.innerHTML = '';
+
+      if (!emails.length) {
+        inbox.innerHTML = 'Aucun email pour l\'instant.';
+        return;
+      }
 
       for (const email of emails) {
-        displayedIds.add(email.id);
-
         const res = await fetch(`https://api.mail.tm/messages/${email.id}`, {
           headers: { 'Authorization': `Bearer ${tempToken}` }
         });
@@ -179,20 +182,24 @@
           content += `<div class="attachments"><strong>Pièces jointes :</strong><br>`;
           for (const file of fullEmail.attachments) {
             const link = `https://api.mail.tm/messages/${fullEmail.id}/attachments/${file.id}`;
-            const type = file.type || '';
+            const blob = await fetch(link, {
+              headers: { 'Authorization': `Bearer ${tempToken}` }
+            }).then(r => r.blob());
+            const objectURL = URL.createObjectURL(blob);
+
             content += `
-              <a class="attachment" href="${link}" target="_blank" download="${file.filename}">
+              <a class="attachment" href="${objectURL}" download="${file.filename}">
                 📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
               </a>
-              ${type.startsWith('image/') ? `<br><img src="${link}" style="max-width:100%; margin-top:10px;">` : ''}
-              ${type === 'application/pdf' ? `<iframe src="${link}"></iframe>` : ''}
+              ${file.type.startsWith('image/') ? `<img src="${objectURL}">` : ''}
+              ${file.type === 'application/pdf' ? `<iframe src="${objectURL}"></iframe>` : ''}
             `;
           }
           content += '</div>';
         }
 
         div.innerHTML = content;
-        inbox.prepend(div);
+        inbox.appendChild(div);
       }
     }
 
