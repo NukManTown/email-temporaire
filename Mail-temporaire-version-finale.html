@@ -67,9 +67,14 @@
       margin-top: 10px;
     }
     .attachment {
-      display: inline-block;
+      display: block;
       margin-top: 5px;
-      margin-right: 10px;
+    }
+    iframe {
+      width: 100%;
+      height: 400px;
+      margin-top: 15px;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
@@ -172,50 +177,43 @@
 
         if (fullEmail.attachments && fullEmail.attachments.length > 0) {
           content += `<div class="attachments"><strong>Pièces jointes :</strong><br>`;
-
           for (const file of fullEmail.attachments) {
-            const fileId = file.id;
-            const url = `https://api.mail.tm/messages/${fullEmail.id}/attachments/${fileId}`;
-
+            const buttonId = `btn-${email.id}-${file.id}`;
             content += `
-              <button class="attachment" onclick="handleAttachment('${url}', '${file.filename}', '${file.type}')">
-                📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
-              </button>
+              <button id="${buttonId}" class="attachment">📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)</button>
             `;
           }
-
-          content += `</div>`;
+          content += '</div>';
         }
 
         div.innerHTML = content;
         inbox.prepend(div);
-      }
-    }
 
-    async function handleAttachment(url, filename, type) {
-      try {
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${tempToken}` }
-        });
+        // Gestion des boutons de pièces jointes
+        if (fullEmail.attachments && fullEmail.attachments.length > 0) {
+          for (const file of fullEmail.attachments) {
+            const btn = document.getElementById(`btn-${email.id}-${file.id}`);
+            btn.addEventListener('click', async () => {
+              const url = `https://api.mail.tm/messages/${email.id}/attachments/${file.id}`;
+              const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tempToken}` }
+              });
+              const data = await res.json();
 
-        if (!res.ok) throw new Error('Erreur de téléchargement');
+              const byteCharacters = atob(data.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: file.type });
+              const blobUrl = URL.createObjectURL(blob);
 
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-
-        if (type.startsWith('image/') || type === 'application/pdf') {
-          window.open(blobUrl, '_blank');
-        } else {
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+              // Ouvrir dans un nouvel onglet ou proposer le téléchargement
+              window.open(blobUrl, '_blank');
+            });
+          }
         }
-      } catch (e) {
-        alert("Erreur lors de l'ouverture du fichier.");
-        console.error(e);
       }
     }
 
