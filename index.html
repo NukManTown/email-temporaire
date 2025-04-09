@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mail Temporaire Ultra 🔥</title>
   <style>
     body {
@@ -80,7 +80,6 @@
     <button onclick="generateEmail()">Créer une Adresse Mail</button>
     <div id="email-address" onclick="copyEmailToClipboard()"></div>
     <div id="copy-message">📋 Adresse copiée !</div>
-
     <hr />
     <h2>Boîte de Réception</h2>
     <div id="inbox">Aucun email pour l'instant...</div>
@@ -173,19 +172,23 @@
 
         if (fullEmail.attachments && fullEmail.attachments.length > 0) {
           content += `<div class="attachments"><strong>Pièces jointes :</strong><br>`;
-          for (const file of fullEmail.attachments) {
+          fullEmail.attachments.forEach((file, index) => {
+            const downloadUrl = file.downloadUrl;
+            const filename = file.filename;
+            const type = file.type;
+
             content += `
               <div class="attachment">
-                <a href="#" onclick="downloadAttachment('${fullEmail.id}', '${file.id}', '${file.filename}'); return false;">
-                  📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
+                <a href="#" onclick="downloadAttachment('${downloadUrl}', '${filename}'); return false;">
+                  📎 ${filename} (${(file.size / 1024).toFixed(1)} Ko)
                 </a>
-                ${file.type && (file.type.startsWith('image/') || file.type === 'application/pdf') ? `
-                <a href="#" onclick="previewAttachment('${fullEmail.id}', '${file.id}'); return false;">
+                ${type && (type.startsWith('image/') || type === 'application/pdf') ? `
+                <a href="#" onclick="previewAttachment('${downloadUrl}'); return false;">
                   🖼️ Voir
                 </a>` : ''}
               </div>
             `;
-          }
+          });
           content += '</div>';
         }
 
@@ -194,29 +197,36 @@
       }
     }
 
-    function previewAttachment(emailId, attachmentId) {
-      const url = `https://api.mail.tm/messages/${emailId}/attachments/${attachmentId}`;
-      window.open(url, '_blank');
+    function previewAttachment(url) {
+      const win = window.open();
+      fetch(url, {
+        headers: { 'Authorization': `Bearer ${tempToken}` }
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        win.location.href = blobUrl;
+      });
     }
 
-    async function downloadAttachment(emailId, attachmentId, filename) {
+    async function downloadAttachment(url, filename) {
       try {
-        const res = await fetch(`https://api.mail.tm/messages/${emailId}/attachments/${attachmentId}`, {
+        const res = await fetch(url, {
           headers: { 'Authorization': `Bearer ${tempToken}` }
         });
 
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = blobUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
       } catch (err) {
-        console.error('Erreur lors du téléchargement :', err);
-        alert("Erreur lors du téléchargement du fichier.");
+        console.error('Erreur téléchargement :', err);
+        alert("Erreur lors du téléchargement.");
       }
     }
 
