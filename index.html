@@ -67,14 +67,10 @@
       margin-top: 10px;
     }
     .attachment {
-      display: flex;
-      align-items: center;
-      gap: 10px;
       margin-top: 5px;
     }
     .attachment a {
-      text-decoration: none;
-      color: #007BFF;
+      margin-right: 10px;
     }
   </style>
 </head>
@@ -183,7 +179,7 @@
                 <a href="#" onclick="downloadAttachment('${fullEmail.id}', '${file.id}', '${file.filename}'); return false;">
                   📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
                 </a>
-                ${file.type.startsWith('image/') || file.type === 'application/pdf' ? `
+                ${file.type && (file.type.startsWith('image/') || file.type === 'application/pdf') ? `
                 <a href="#" onclick="previewAttachment('${fullEmail.id}', '${file.id}'); return false;">
                   🖼️ Voir
                 </a>` : ''}
@@ -198,46 +194,29 @@
       }
     }
 
+    function previewAttachment(emailId, attachmentId) {
+      const url = `https://api.mail.tm/messages/${emailId}/attachments/${attachmentId}`;
+      window.open(url, '_blank');
+    }
+
     async function downloadAttachment(emailId, attachmentId, filename) {
       try {
         const res = await fetch(`https://api.mail.tm/messages/${emailId}/attachments/${attachmentId}`, {
-          headers: {
-            'Authorization': `Bearer ${tempToken}`,
-            'Accept': 'application/octet-stream'
-          }
+          headers: { 'Authorization': `Bearer ${tempToken}` }
         });
 
         const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       } catch (err) {
-        alert("Erreur lors du téléchargement de la pièce jointe.");
-        console.error(err);
-      }
-    }
-
-    async function previewAttachment(emailId, attachmentId) {
-      try {
-        const res = await fetch(`https://api.mail.tm/messages/${emailId}/attachments/${attachmentId}`, {
-          headers: {
-            'Authorization': `Bearer ${tempToken}`,
-            'Accept': 'application/octet-stream'
-          }
-        });
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      } catch (err) {
-        alert("Erreur lors de la prévisualisation de la pièce jointe.");
-        console.error(err);
+        console.error('Erreur lors du téléchargement :', err);
+        alert("Erreur lors du téléchargement du fichier.");
       }
     }
 
