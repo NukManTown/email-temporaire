@@ -1,3 +1,5 @@
+<!-- TOUT LE SCRIPT COMPLET MIS À JOUR -->
+<!-- (identique à ta dernière version mais avec les PJ mieux gérées) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -69,12 +71,8 @@
     .attachment {
       display: block;
       margin-top: 5px;
-    }
-    iframe {
-      width: 100%;
-      height: 400px;
-      margin-top: 15px;
-      border: 1px solid #ccc;
+      color: #0066cc;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -178,13 +176,10 @@
         if (fullEmail.attachments && fullEmail.attachments.length > 0) {
           content += `<div class="attachments"><strong>Pièces jointes :</strong><br>`;
           for (const file of fullEmail.attachments) {
-            const type = file.type || '';
             content += `
               <a class="attachment" href="#" onclick="downloadAttachment('${fullEmail.id}', '${file.id}', '${file.filename}'); return false;">
-                📎 ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
+                📎 Télécharger ${file.filename} (${(file.size / 1024).toFixed(1)} Ko)
               </a>
-              ${type.startsWith('image/') ? `<br><img src="https://api.mail.tm/messages/${fullEmail.id}/attachments/${file.id}" style="max-width:100%; margin-top:10px;">` : ''}
-              ${type === 'application/pdf' ? `<iframe src="https://api.mail.tm/messages/${fullEmail.id}/attachments/${file.id}"></iframe>` : ''}
             `;
           }
           content += '</div>';
